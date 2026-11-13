@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dieselprognos</title>
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f4f3f0;
+  --surface-1: #fcfcfb;
+  --border: #e2e1dc;
+  --grid: #ecebe7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7974;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --warn-bg: #fff6e0;
+  --warn-border: #fab219;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --border: #2e2e2c;
+    --grid: #262624;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8f8e86;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --warn-bg: #2b2412;
+    --warn-border: #c98500;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211; --surface-1: #1a1a19; --border: #2e2e2c; --grid: #262624;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  --warn-bg: #2b2412; --warn-border: #c98500;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+.sub { color: var(--text-secondary); margin: 0; }
+.hero { text-align: right; }
+.hero .label { color: var(--text-secondary); font-size: 13px; }
+.hero .value { font-size: 36px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hero .meta { color: var(--text-muted); font-size: 13px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.tile .label { color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.tile .value { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; margin: 6px 0 2px; }
+.tile .unit { font-size: 15px; font-weight: 400; color: var(--text-secondary); }
+.dir { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.range { color: var(--text-secondary); margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+.track { border-top: 1px solid var(--border); padding-top: 10px; font-size: 13px; color: var(--text-secondary); }
+.track b { color: var(--text-primary); font-weight: 600; }
+.note { margin-top: 10px; font-size: 13px; background: var(--warn-bg); border-left: 3px solid var(--warn-border); padding: 6px 10px; border-radius: 4px; }
+.chart-card { margin-bottom: 16px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.chart-head h2 { margin: 0; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 4px 12px; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--grid); color: var(--text-primary); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+#chart { position: relative; }
+#chart svg { display: block; width: 100%; height: 320px; }
+#chart text { fill: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  white-space: nowrap; display: none; font-variant-numeric: tabular-nums;
+}
+.tip .muted { color: var(--text-muted); }
+details { margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
+table { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+td, th { padding: 2px 12px 2px 0; text-align: left; }
+.explain p { margin: 0 0 10px; color: var(--text-secondary); }
+.explain p:last-child { margin-bottom: 0; }
+footer { margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+footer a { color: inherit; }
+@media print { body { background: #fff; } .card { break-inside: avoid; } details { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Dieselprognos</h1>
+      <p class="sub">Preems listpris på diesel (företagskort, inkl. moms)</p>
+    </div>
+    <div class="hero">
+      <div class="label">Aktuellt listpris</div>
+      <div class="value" id="price"></div>
+      <div class="meta" id="price-date"></div>
+    </div>
+  </header>
+
+  <section class="tiles">
+    <div class="card tile" id="tile-short"></div>
+    <div class="card tile" id="tile-week"></div>
+  </section>
+
+  <section class="card chart-card">
+    <div class="chart-head">
+      <h2>Listpris och prognos</h2>
+      <div class="seg" role="group" aria-label="Tidsperiod">
+        <button data-days="90" aria-pressed="true">3 mån</button>
+        <button data-days="365" aria-pressed="false">12 mån</button>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--series-1)"></i>Preem listpris</span>
+      <span><i class="swatch" style="background:var(--series-3)"></i>Prognos kort sikt (80 % spann)</span>
+      <span><i class="swatch" style="background:var(--series-2)"></i>Prognos snitt 7 dagar (80 % spann)</span>
+    </div>
+    <div id="chart"><div class="tip" id="tip"></div></div>
+    <details>
+      <summary>Visa senaste 30 dagarnas priser som tabell</summary>
+      <table id="table"><thead><tr><th>Datum</th><th>kr/l</th></tr></thead><tbody></tbody></table>
+    </details>
+  </section>
+
+  <section class="card explain">
+    <h2>Så läser du prognosen</h2>
+    <p>Preems pris följer världsmarknadens dieselpris och dollarkursen. När marknaden rör sig hinner Preem oftast
+      föra vidare det mesta inom 1–5 dagar. Modellen räknar ut hur mycket av de senaste dagarnas marknadsrörelse som
+      ännu inte syns i Preems pris.</p>
+    <p><b>Lita mest på spannet.</b> Vart priset går längre fram beror på vad oljemarknaden gör de kommande dagarna, och
+      det kan ingen modell förutsäga säkert. Spannet visar hur mycket priset normalt rör sig: i 8 fall av 10 har den
+      verkliga förändringen hamnat inom det.</p>
+    <p>Siffrorna gäller Preems officiella listpris. Ert eget pris kan ligga på en annan nivå men rör sig på samma sätt.</p>
+  </section>
+
+  <footer>
+    Skapad <span id="generated"></span> med öppna data:
+    <a href="https://www.preem.se/foretag/listpriser/">Preem listpriser</a>,
+    <a href="https://www.eia.gov/dnav/pet/pet_pri_spt_s1_d.htm">EIA (NY Harbor ULSD)</a>,
+    <a href="https://www.riksbank.se/sv/statistik/rantor-och-valutakurser/">Riksbanken (USD/SEK)</a>.
+    Prognosen är en statistisk uppskattning, inte ett löfte om framtida pris.
+  </footer>
+</main>
+
+<script>
+const D = __DATA__;
+const kr = (x, d = 2) => x.toFixed(d).replace(".", ",");
+const signed = x => (x > 0 ? "+" : x < 0 ? "−" : "±") + kr(Math.abs(x));
+const pct = x => Math.round(x * 100) + " %";
+const fmtDate = s => new Date(s + "T00:00:00").toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" });
+const DIR = { UPP: ["▲", "Väntas gå upp"], NER: ["▼", "Väntas gå ner"], "OFÖRÄNDRAT": ["▶", "Väntas vara oförändrat"] };
+
+document.getElementById("price").innerHTML = kr(D.price) + ' <span style="font-size:18px;font-weight:400">kr/l</span>';
+document.getElementById("price-date").textContent = "gäller från " + fmtDate(D.price_date);
+document.getElementById("generated").textContent = fmtDate(D.generated);
+
+function tile(id, f, title, color, unit) {
+  const [icon, word] = DIR[f.dir];
+  document.getElementById(id).innerHTML = `
+    <div class="label"><i class="swatch" style="background:var(${color})"></i>${title}</div>
+    <div class="value">${signed(f.pred)} <span class="unit">kr/l</span></div>
+    <div class="dir"><span aria-hidden="true">${icon}</span>${word}</div>
+    <div class="range">Troligt spann ${signed(f.lo)} till ${signed(f.hi)} kr/l</div>
+    ${f.extra ? `<div class="range" style="margin-top:-6px">${f.extra}</div>` : ""}
+    <div class="track">Historiskt: rätt riktning <b>${pct(f.hit)}</b> av ${unit}, medelfel <b>${kr(f.mae)} kr/l</b>
+      (att gissa ”oförändrat” ger ${kr(f.naive)} kr/l)</div>
+    ${f.mae >= f.naive ? '<div class="note">Slår inte ”oförändrat” historiskt – lita på spannet, inte på riktningen.</div>' : ""}`;
+}
+tile("tile-short", { ...D.short, extra: `Marknaden har rört sig ${signed(D.short.moved)} kr/l senaste 7 dagarna` },
+     `Om ${D.short.h} dagar`, "--series-3", "dagarna");
+tile("tile-week", D.week, "Snittpris kommande 7 dagar", "--series-2", "veckorna");
+
+const tbody = document.querySelector("#table tbody");
+D.history.slice(-30).reverse().forEach(([d, p]) => tbody.insertAdjacentHTML("beforeend", `<tr><td>${d}</td><td>${kr(p)}</td></tr>`));
+
+const NS = "http://www.w3.org/2000/svg";
+const el = (n, a, parent) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); parent && parent.appendChild(e); return e; };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const day = s => new Date(s + "T00:00:00").getTime();
+const host = document.getElementById("chart"), tip = document.getElementById("tip");
+
+let rangeDays = 90;
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  rangeDays = +b.dataset.days;
+  document.querySelectorAll(".seg button").forEach(o => o.setAttribute("aria-pressed", o === b));
+  draw();
+}));
+
+function niceStep(span) {
+  const raw = span / 5, mag = 10 ** Math.floor(Math.log10(raw)), n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+
+function draw() {
+  host.querySelector("svg")?.remove();
+  const W = host.clientWidth, H = 320, m = { l: 44, r: 16, t: 12, b: 28 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Preems listpris med prognos" });
+  host.insertBefore(svg, tip);
+  const all = D.history.map(([d, p], i) => [day(d), p, i]);
+  const cutoff = all[all.length - 1][0] - rangeDays * 864e5;
+  const hist = all.filter(h => h[0] >= cutoff);
+  const fc = D.forecasts.map(f => ({ ...f, t: day(f.date) }));
+  const xs = [hist[0][0], Math.max(...fc.map(f => f.t)) + 3 * 864e5];
+  const ys = [Math.min(...hist.map(h => h[1]), ...fc.map(f => f.lo)), Math.max(...hist.map(h => h[1]), ...fc.map(f => f.hi))];
+  const pad = (ys[1] - ys[0]) * 0.08; ys[0] -= pad; ys[1] += pad;
+  const X = t => m.l + (t - xs[0]) / (xs[1] - xs[0]) * (W - m.l - m.r);
+  const Y = v => m.t + (ys[1] - v) / (ys[1] - ys[0]) * (H - m.t - m.b);
+
+  const step = niceStep(ys[1] - ys[0]);
+  for (let v = Math.ceil(ys[0] / step) * step; v <= ys[1]; v += step) {
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: css("--grid") }, svg);
+    el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, svg).textContent = kr(v, step < 1 ? 1 : 0);
+  }
+  const short = rangeDays <= 120;
+  const months = short ? 1 : W < 560 ? 3 : 2;
+  for (let d = new Date(new Date(xs[0]).getFullYear(), new Date(xs[0]).getMonth(), 1); d.getTime() <= xs[1]; d.setMonth(d.getMonth() + 1)) {
+    const first = d.getTime();
+    if (first < xs[0] || d.getMonth() % months) continue;
+    el("line", { x1: X(first), x2: X(first), y1: H - m.b, y2: H - m.b + 4, stroke: css("--text-muted") }, svg);
+    el("text", { x: X(first), y: H - 8, "text-anchor": "middle" }, svg).textContent =
+      d.toLocaleDateString("sv-SE", { month: "short" }) + (d.getMonth() === 0 ? " " + d.getFullYear() : "");
+  }
+
+  let path = `M${X(hist[0][0])},${Y(hist[0][1])}`;
+  for (let i = 1; i < hist.length; i++) path += `H${X(hist[i][0])}V${Y(hist[i][1])}`;
+  el("path", { d: path, fill: "none", stroke: css("--series-1"), "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+
+  const base = hist[hist.length - 1];
+  const cross = el("line", { y1: m.t, y2: H - m.b, stroke: css("--text-muted"), "stroke-dasharray": "3 3", visibility: "hidden" }, svg);
+  const dot = el("circle", { r: 4, fill: css("--series-1"), stroke: css("--surface-1"), "stroke-width": 2, visibility: "hidden" }, svg);
+
+  fc.forEach(f => {
+    const color = css(f.color), x = X(f.t);
+    el("line", { x1: X(base[0]), x2: x, y1: Y(base[1]), y2: Y(f.value), stroke: color, "stroke-width": 2, "stroke-dasharray": "4 3" }, svg);
+    el("line", { x1: x, x2: x, y1: Y(f.lo), y2: Y(f.hi), stroke: color, "stroke-width": 2, "stroke-linecap": "round" }, svg);
+    [f.lo, f.hi].forEach(v => el("line", { x1: x - 5, x2: x + 5, y1: Y(v), y2: Y(v), stroke: color, "stroke-width": 2, "stroke-linecap": "round" }, svg));
+    el("circle", { cx: x, cy: Y(f.value), r: 5, fill: color, stroke: css("--surface-1"), "stroke-width": 2 }, svg);
+    f.px = x;
+  });
+
+  svg.addEventListener("mousemove", e => {
+    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left;
+    const f = fc.find(f => Math.abs(f.px - mx) < 12);
+    let html, px, py;
+    if (f) {
+      html = `<b>${f.label}</b><br>${kr(f.value)} kr/l <span class="muted">(${kr(f.lo)}–${kr(f.hi)})</span>`;
+      px = f.px; py = Y(f.value); cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden");
+    } else {
+      const t = xs[0] + (mx - m.l) / (W - m.l - m.r) * (xs[1] - xs[0]);
+      let i = hist.findIndex(h => h[0] > t); i = i < 0 ? hist.length - 1 : Math.max(0, i - 1);
+      const [ht, hp, src] = hist[i]; px = X(ht); py = Y(hp);
+      cross.setAttribute("x1", px); cross.setAttribute("x2", px); cross.setAttribute("visibility", "visible");
+      dot.setAttribute("cx", px); dot.setAttribute("cy", py); dot.setAttribute("visibility", "visible");
+      html = `<span class="muted">${fmtDate(D.history[src][0])}</span><br><b>${kr(hp)} kr/l</b>`;
+    }
+    tip.innerHTML = html; tip.style.display = "block";
+    tip.style.left = Math.min(px + 12, W - tip.offsetWidth - 4) + "px";
+    tip.style.top = Math.max(0, py - tip.offsetHeight - 8) + "px";
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); });
+}
+draw();
+addEventListener("resize", draw);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+</script>
+</body>
+</html>
