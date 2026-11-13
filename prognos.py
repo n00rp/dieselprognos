@@ -161,14 +161,26 @@ def direction(x):
     return np.where(x > DEADBAND, 1, np.where(x < -DEADBAND, -1, 0))
 
 
-def metrics(bt):
+# 7,5/92,5 %-kvantiler av senaste årets fel gav i test mot historiken ~80 % träff (10/90 gav bara ~75 %,
+# eftersom felen varierar med hur orolig marknaden är).
+BAND_Q = 0.075
+
+
+def metrics(bt, band_n=52, lag=1):
+    """band_n = antal senaste fel som spannet bygger på (ett år). lag = rader innan ett fel blir känt.
+    coverage = andel gånger verkligheten hamnade i spannet, när spannet bara byggde på tidigare fel."""
     err = bt["y"] - bt["pred"]
+    roll = err.rolling(band_n, min_periods=band_n)
+    lo, hi = roll.quantile(BAND_Q).shift(lag), roll.quantile(1 - BAND_Q).shift(lag)
+    ok = lo.notna()
+    recent = err.iloc[-band_n:]
     return {
         "hit_rate": float((direction(bt["y"]) == direction(bt["pred"])).mean()),
         "mae": float(err.abs().mean()),
         "naive_mae": float(bt["y"].abs().mean()),
-        "q10": float(err.quantile(0.1)),
-        "q90": float(err.quantile(0.9)),
+        "band_lo": float(recent.quantile(BAND_Q)),
+        "band_hi": float(recent.quantile(1 - BAND_Q)),
+        "coverage": float(((err[ok] >= lo[ok]) & (err[ok] <= hi[ok])).mean()),
     }
 
 
@@ -189,7 +201,7 @@ def main(argv=None):
     # Kort sikt: Preem tar efter marknaden inom 1–5 dagar.
     day = build_daily(preem, ulsd, usdsek)
     window = 3 * 365
-    ms = metrics(backtest(day, window, DAILY_FEATURES, skip=SHORT_H - 1))
+    ms = metrics(backtest(day, window, DAILY_FEATURES, skip=SHORT_H - 1), band_n=365, lag=SHORT_H)
     known = day.dropna(subset=DAILY_FEATURES + ["y"]).iloc[-window:]
     pred_s = float(predict(fit(known, DAILY_FEATURES), day.iloc[[-1]], DAILY_FEATURES)[0])
     moved = float(day[DAILY_FEATURES[0]].iloc[-7:].sum())
@@ -203,8 +215,8 @@ def main(argv=None):
     pred = float(predict(fit(train), last)[0])
 
     def report(p, mm, unit):
-        print(f"  Väntad förändring: {p:+.2f} kr/l  (troligt spann {p + mm['q10']:+.2f} till "
-              f"{p + mm['q90']:+.2f})  → {_dir_word(p)}")
+        print(f"  Väntad förändring: {p:+.2f} kr/l  (troligt spann {p + mm['band_lo']:+.2f} till "
+              f"{p + mm['band_hi']:+.2f}, träffat {mm['coverage']:.0%} historiskt)  → {_dir_word(p)}")
         print(f"  Historiskt: rätt riktning {mm['hit_rate']:.0%} av {unit}, medelfel {mm['mae']:.2f} kr/l "
               f"(att gissa \"oförändrat\" ger {mm['naive_mae']:.2f})")
         if mm["mae"] >= mm["naive_mae"]:
@@ -226,12 +238,12 @@ def main(argv=None):
     hist = preem.reindex(pd.date_range(now - pd.Timedelta(days=365), now)).ffill().dropna()
 
     def summary(p, mm):
-        return {"pred": p, "lo": p + mm["q10"], "hi": p + mm["q90"], "dir": _dir_word(p),
-                "hit": mm["hit_rate"], "mae": mm["mae"], "naive": mm["naive_mae"]}
+        return {"pred": p, "lo": p + mm["band_lo"], "hi": p + mm["band_hi"], "dir": _dir_word(p),
+                "hit": mm["hit_rate"], "cov": mm["coverage"], "mae": mm["mae"], "naive": mm["naive_mae"]}
 
     def point(p, mm, days, label, color):
         return {"date": f"{now + pd.Timedelta(days=days):%Y-%m-%d}", "value": base + p, "label": label,
-                "lo": base + p + mm["q10"], "hi": base + p + mm["q90"], "color": color}
+                "lo": base + p + mm["band_lo"], "hi": base + p + mm["band_hi"], "color": color}
 
     ctx = {
         "generated": f"{date.today():%Y-%m-%d}",

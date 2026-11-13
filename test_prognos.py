@@ -78,3 +78,13 @@ def test_render_report_injects_data():
     blob = html.split("const D = ", 1)[1].split(";\n", 1)[0]
     assert json.loads(blob) == ctx
     assert "</script><script>" not in prognos.render_report({"x": "</script><script>"})
+
+
+def test_band_uses_recent_errors_and_reports_coverage():
+    idx = pd.date_range("2020-01-01", periods=200, freq="W")
+    rng = np.random.default_rng(1)
+    err = np.r_[rng.normal(0, 1.0, 100), rng.normal(0, 0.1, 100)]  # lugnare på slutet
+    bt = pd.DataFrame({"pred": 0.0, "y": err}, index=idx)
+    m = prognos.metrics(bt, band_n=52)
+    assert -0.3 < m["band_lo"] < 0 < m["band_hi"] < 0.3
+    assert 0.5 < m["coverage"] <= 1

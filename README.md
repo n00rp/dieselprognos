@@ -38,7 +38,8 @@ Testerna körs med `.venv\Scripts\python -m pytest` (Windows) eller `.venv/bin/p
 
 - **Om 3 dagar:** väntad förändring av listpriset om tre dagar.
 - **Snittpris kommande 7 dagar:** väntat snittpris nästa sju dagar jämfört med i dag.
-- **Troligt spann:** i 8 fall av 10 har den verkliga förändringen historiskt hamnat inom spannet.
+- **Troligt spann:** bygger på modellens fel det senaste året. Testat mot historiken har ungefär 8 fall av 10
+  hamnat inom spannet; den faktiska träffprocenten står i rapporten.
 - **Historiskt:** hur ofta modellen haft rätt riktning och hur stort medelfelet varit, jämfört med att bara gissa
   "oförändrat pris".
 

@@ -141,8 +141,8 @@ footer a { color: inherit; }
       föra vidare det mesta inom 1–5 dagar. Modellen räknar ut hur mycket av de senaste dagarnas marknadsrörelse som
       ännu inte syns i Preems pris.</p>
     <p><b>Lita mest på spannet.</b> Vart priset går längre fram beror på vad oljemarknaden gör de kommande dagarna, och
-      det kan ingen modell förutsäga säkert. Spannet visar hur mycket priset normalt rör sig: i 8 fall av 10 har den
-      verkliga förändringen hamnat inom det.</p>
+      det kan ingen modell förutsäga säkert. Spannet bygger på hur stora modellens fel har varit det senaste året, så
+      det blir bredare när marknaden är orolig. Testat mot historiken har ungefär 8 fall av 10 hamnat inom spannet.</p>
     <p>Siffrorna gäller Preems officiella listpris. Ert eget pris kan ligga på en annan nivå men rör sig på samma sätt.</p>
   </section>
 
@@ -173,7 +173,8 @@ function tile(id, f, title, color, unit) {
     <div class="label"><i class="swatch" style="background:var(${color})"></i>${title}</div>
     <div class="value">${signed(f.pred)} <span class="unit">kr/l</span></div>
     <div class="dir"><span aria-hidden="true">${icon}</span>${word}</div>
-    <div class="range">Troligt spann ${signed(f.lo)} till ${signed(f.hi)} kr/l</div>
+    <div class="range">Troligt spann ${signed(f.lo)} till ${signed(f.hi)} kr/l
+      <span style="color:var(--text-muted)">(träffat ${pct(f.cov)} historiskt)</span></div>
     ${f.extra ? `<div class="range" style="margin-top:-6px">${f.extra}</div>` : ""}
     <div class="track">Historiskt: rätt riktning <b>${pct(f.hit)}</b> av ${unit}, medelfel <b>${kr(f.mae)} kr/l</b>
       (att gissa ”oförändrat” ger ${kr(f.naive)} kr/l)</div>
